@@ -27,5 +27,7 @@ RUN composer install --no-interaction --optimize-autoloader --no-dev
 RUN chown -R www-data:www-data /var/www/html/storage
 RUN chmod -R 775 /var/www/html/storage
 
-# Expose port 80
+# Expose port 8000
 EXPOSE 8000
+
+CMD php artisan serve --host=0.0.0.0 --port=8000 & php artisan migrate && tail -f /dev/null
