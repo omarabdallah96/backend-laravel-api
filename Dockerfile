@@ -1,33 +1,46 @@
-# Use the official PHP image as the base image
-FROM php:8.0-apache
+# Base image with PHP 8
+FROM php:8-cli
 
-# Install necessary extensions and packages
-RUN docker-php-ext-install pdo_mysql
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    zip \
-    unzip
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y \
+        libzip-dev \
+        zip \
+        unzip \
+        git
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Set the working directory
-WORKDIR /var/www/html
-
-# Copy the codebase into the container
-COPY . /var/www/html
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql zip
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Install project dependencies
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# Set working directory
+WORKDIR /var/www/html
+
+# Change ownership of Laravel project files
+RUN chown -R www-data:www-data /var/www/html
+
+# Copy source code
+COPY . .
 
 # Set file permissions
-RUN chown -R www-data:www-data /var/www/html/storage
-RUN chmod -R 775 /var/www/html/storage
+RUN chmod -R 755 storage bootstrap
+
+# Copy example .env file
+COPY .env.example .env
+
+# Generate application key
+RUN php artisan key:generate
+
+# Install dependencies
+RUN composer install --no-dev --optimize-autoloader
+
+# Set file permissions again after dependencies installation
+RUN chmod -R 755 storage bootstrap
 
 # Expose port 8000
 EXPOSE 8000
 
-CMD php artisan serve --host=0.0.0.0 --port=8000 
+# Start PHP built-in web server
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
